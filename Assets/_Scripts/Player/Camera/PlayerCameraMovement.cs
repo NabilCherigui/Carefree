@@ -9,6 +9,8 @@ public class PlayerCameraMovement : MonoBehaviour
     [SerializeField] private float _sensitivity;
     [SerializeField] private float _minX;
     [SerializeField] private float _maxX;
+    [SerializeField] private string _xAxis = "Mouse X", _yAxis = "Mouse Y";
+   
     private float _clampX;
 
     void Awake()
@@ -18,21 +20,21 @@ public class PlayerCameraMovement : MonoBehaviour
     
     private void Update()
     {
-        MoveCamera();
+        MoveCamera(_xAxis, _yAxis);
     }
 	
-    private void MoveCamera()
+    private void MoveCamera(string xAxis, string yAxis)
     {
-        var mouseX = Input.GetAxis("Mouse X");
-        var mouseY = Input.GetAxis("Mouse Y");
+        float mouseX = Input.GetAxis(xAxis);
+        float mouseY = Input.GetAxis(yAxis);
 
-        var rotationX = mouseX * _sensitivity;
-        var rotationY = mouseY * _sensitivity;
+        float rotationX = mouseX * _sensitivity;
+        float rotationY = mouseY * _sensitivity;
 
         _clampX -= rotationY;
         
-        var cameraRotation = _camera.transform.rotation.eulerAngles;
-        var bodyRotation = transform.rotation.eulerAngles;
+        Vector3 cameraRotation = _camera.transform.rotation.eulerAngles;
+        Vector3 bodyRotation = transform.rotation.eulerAngles;
         
         cameraRotation.x -= rotationY;
         cameraRotation.z = 0;

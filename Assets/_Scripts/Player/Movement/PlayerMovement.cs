@@ -11,8 +11,10 @@ public class PlayerMovement : MonoBehaviour
     }
     
     public GravityMode gravityMode = GravityMode.On;
+
+    [SerializeField] private bool gravity, seperateSpeed;
     
-    [SerializeField] private float _speed, _gravity;
+    [SerializeField] private float _speed, _gravity, _forwardSpeed, _backwardSpeed, _strafingSpeed;
     
     [SerializeField] private string _horizontalAxis =  "Horizontal", _verticalAxis = "Vertical";
     
@@ -24,7 +26,10 @@ public class PlayerMovement : MonoBehaviour
     }
 
     void Update()
-    {
+    {   
+        Move(_horizontalAxis, _verticalAxis, _gravity, _forwardSpeed, _backwardSpeed, _strafingSpeed);
+        
+        /*
         if (gravityMode == GravityMode.On)
         {
             Move(_speed, _horizontalAxis, _verticalAxis, _gravity);
@@ -32,29 +37,45 @@ public class PlayerMovement : MonoBehaviour
         else
         {
             Move(_speed, _horizontalAxis, _verticalAxis);
-        }
+        }*/
         
     }
     
     private void Move(float speed, string horizontal, string vertical)
     {
-        var direction = new Vector3();
-        direction.x = Input.GetAxis(horizontal);
-        direction.z = Input.GetAxis(vertical);
-
-        _rigidbody.velocity = Vector3.zero;
-        _rigidbody.AddForce(direction * speed, ForceMode.VelocityChange);
-    }
-    
-    private void Move(float speed, string horizontal, string vertical, float gravity)
-    {
-        var direction = new Vector3();
-        direction.x = Input.GetAxis(horizontal) * speed;
-        direction.y = gravity;
-        direction.z = Input.GetAxis(vertical) * speed;
+        Vector3 direction = (transform.forward * Input.GetAxis(vertical)) + (transform.right * Input.GetAxis(horizontal)) * speed;
 
         _rigidbody.velocity = Vector3.zero;
         _rigidbody.AddForce(direction, ForceMode.VelocityChange);
     }
+    
+    private void Move(float speed, string horizontal, string vertical, float gravity)
+    {
+        Vector3 direction = ((transform.forward * Input.GetAxis(vertical)) + (transform.right * Input.GetAxis(horizontal))) * speed;
+        direction.y = gravity;
+        
+        _rigidbody.velocity = Vector3.zero;
+        _rigidbody.AddForce(direction, ForceMode.VelocityChange);
+    }
+    
+    private void Move(string horizontal, string vertical, float gravity, float forwardSpeed, float backwardSpeed, float strafingSpeed)
+    {
+        Vector3 direction = new Vector3();
+        Vector3 horizontalDirection = transform.right * Input.GetAxis(horizontal) * strafingSpeed;;
+        Vector3 verticalDirection = transform.forward * Input.GetAxis(vertical) * forwardSpeed;
+        if (Input.GetAxis(vertical) < 0)
+        {
+            verticalDirection = transform.forward * Input.GetAxis(vertical) * backwardSpeed;
+        }
+        
+        direction = verticalDirection + horizontalDirection;
+        //Turn gravity on when you dont touch the ground
+        //direction.y = gravity;
 
+        _rigidbody.velocity = Vector3.zero;
+        print("Direction: " + direction);
+        print("Velocity: " + _rigidbody.velocity);
+        _rigidbody.AddForce(direction, ForceMode.VelocityChange);
+    }
+    
 }

@@ -364,8 +364,13 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   gravityMode: 0
+  gravity: 0
+  seperateSpeed: 0
   _speed: 10
   _gravity: -10
+  _forwardSpeed: 10
+  _backwardSpeed: 6
+  _strafingSpeed: 8
   _horizontalAxis: Horizontal
   _verticalAxis: Vertical
 --- !u!54 &591084345
@@ -398,6 +403,8 @@ MonoBehaviour:
   _sensitivity: 10
   _minX: -90
   _maxX: 90
+  _xAxis: Mouse X
+  _yAxis: Mouse Y
 --- !u!1 &1221730773
 GameObject:
   m_ObjectHideFlags: 0
