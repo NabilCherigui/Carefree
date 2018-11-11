@@ -4,21 +4,22 @@ using UnityEngine;
 
 public class PlayerMovement : MonoBehaviour
 {
-    public enum GravityMode
-    {
-        On,
-        Off
-    }
-    
-    public GravityMode gravityMode = GravityMode.On;
+    [SerializeField] private float _speed, _gravity, _forwardSpeed, _backwardSpeed, _strafingSpeed, _jumpSpeed, _runSpeed;
 
-    [SerializeField] private bool gravity, seperateSpeed;
+    [SerializeField] private string _horizontalAxis = "Horizontal", _verticalAxis = "Vertical", _jump = "Jump", _run = "Run";
     
-    [SerializeField] private float _speed, _gravity, _forwardSpeed, _backwardSpeed, _strafingSpeed;
-    
-    [SerializeField] private string _horizontalAxis =  "Horizontal", _verticalAxis = "Vertical";
+    [SerializeField] private Transform _sphereCastTransform;
+    [SerializeField] private float _sphereCastRadius;
+    [SerializeField] private float _sphereCastMaxDistance;
     
     private Rigidbody _rigidbody;
+
+    private RaycastHit _raycastHit;
+
+    private Vector3 _direction;
+    private float _timeFromFalling;
+    private bool _falling;
+
 
     void Awake()
     {
@@ -27,55 +28,78 @@ public class PlayerMovement : MonoBehaviour
 
     void Update()
     {   
-        Move(_horizontalAxis, _verticalAxis, _gravity, _forwardSpeed, _backwardSpeed, _strafingSpeed);
-        
-        /*
-        if (gravityMode == GravityMode.On)
+        Move(_horizontalAxis, _verticalAxis, _jump, _run, _gravity, _forwardSpeed, _backwardSpeed, _strafingSpeed, _jumpSpeed, _runSpeed);
+    }
+    
+    //With gravity and separate speeds(forward, backward, strafing, jumping, running)
+    private void Move(string horizontal, string vertical, string jump, string run, float gravity, float forwardSpeed, float backwardSpeed, float strafingSpeed, float jumpSpeed, float runSpeed)
+    {
+        Vector3 horizontalDirection = new Vector3();
+        Vector3 verticalDirection = new Vector3();
+        Vector3 gravityDirection = new Vector3();
+
+        if (_falling == false)
         {
-            Move(_speed, _horizontalAxis, _verticalAxis, _gravity);
+            if (Input.GetAxis(vertical) < 0)
+            {
+                verticalDirection = transform.forward * Input.GetAxis(vertical) * backwardSpeed;
+            }
+            else if(Input.GetButton(run))
+            {
+                verticalDirection = transform.forward * Input.GetAxis(vertical) * runSpeed;
+            }
+            else
+            {
+                verticalDirection = transform.forward * Input.GetAxis(vertical) * forwardSpeed;
+            }
+
+            horizontalDirection = transform.right * Input.GetAxis(horizontal) * strafingSpeed;
+        }
+        
+        if (Physics.SphereCast(_sphereCastTransform.position, _sphereCastRadius, Vector3.down, out _raycastHit,
+                _sphereCastMaxDistance) && Input.GetButtonDown(jump))
+        {
+            gravityDirection = transform.up * jumpSpeed;
+        }
+
+        if (Physics.SphereCast(_sphereCastTransform.position, _sphereCastRadius, Vector3.down, out _raycastHit, _sphereCastMaxDistance) == false)
+        {
+            if (_timeFromFalling == 0)
+            {
+                _timeFromFalling = Time.time;
+            }
+
+            _falling = true;
+            gravityDirection = transform.up * (gravity * -1) * (Time.time - _timeFromFalling);
         }
         else
         {
-            Move(_speed, _horizontalAxis, _verticalAxis);
-        }*/
-        
-    }
-    
-    private void Move(float speed, string horizontal, string vertical)
-    {
-        Vector3 direction = (transform.forward * Input.GetAxis(vertical)) + (transform.right * Input.GetAxis(horizontal)) * speed;
-
-        _rigidbody.velocity = Vector3.zero;
-        _rigidbody.AddForce(direction, ForceMode.VelocityChange);
-    }
-    
-    private void Move(float speed, string horizontal, string vertical, float gravity)
-    {
-        Vector3 direction = ((transform.forward * Input.GetAxis(vertical)) + (transform.right * Input.GetAxis(horizontal))) * speed;
-        direction.y = gravity;
-        
-        _rigidbody.velocity = Vector3.zero;
-        _rigidbody.AddForce(direction, ForceMode.VelocityChange);
-    }
-    
-    private void Move(string horizontal, string vertical, float gravity, float forwardSpeed, float backwardSpeed, float strafingSpeed)
-    {
-        Vector3 direction = new Vector3();
-        Vector3 horizontalDirection = transform.right * Input.GetAxis(horizontal) * strafingSpeed;;
-        Vector3 verticalDirection = transform.forward * Input.GetAxis(vertical) * forwardSpeed;
-        if (Input.GetAxis(vertical) < 0)
-        {
-            verticalDirection = transform.forward * Input.GetAxis(vertical) * backwardSpeed;
+            _falling = false;
+            _timeFromFalling = 0;
         }
         
-        direction = verticalDirection + horizontalDirection;
-        //Turn gravity on when you dont touch the ground
-        //direction.y = gravity;
+        _direction = verticalDirection + horizontalDirection + gravityDirection;
 
-        _rigidbody.velocity = Vector3.zero;
-        print("Direction: " + direction);
-        print("Velocity: " + _rigidbody.velocity);
-        _rigidbody.AddForce(direction, ForceMode.VelocityChange);
+        if (_rigidbody.velocity.magnitude > _direction.magnitude && _falling == false)
+        {
+            if (_direction.Equals(Vector3.zero))
+            {
+                _rigidbody.velocity = Vector3.zero;
+                _rigidbody.angularVelocity = Vector3.zero;
+                _rigidbody.Sleep();
+                _rigidbody.WakeUp();
+             }
+            else if(_direction.Equals(Vector3.zero) == false)
+            {
+                _rigidbody.velocity = _direction;
+                _rigidbody.angularVelocity = Vector3.zero;
+                _rigidbody.AddForce(_direction);
+            }
+        }
+        else
+        {
+            _rigidbody.AddForce(_direction);
+        }
     }
     
 }
