@@ -89,7 +89,7 @@ public class PlayerMovement : MonoBehaviour
             }
             else if (_direction.Equals(Vector3.zero) == false)
             {
-                _rigidbody.velocity = _direction;
+                _rigidbody.velocity = _direction; 
                 _rigidbody.angularVelocity = Vector3.zero;
                 Move();
             }
