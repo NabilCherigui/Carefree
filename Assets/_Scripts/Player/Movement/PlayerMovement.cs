@@ -27,41 +27,38 @@ public class PlayerMovement : MonoBehaviour
     }
 
     void Update()
-    {   
-        Move(_horizontalAxis, _verticalAxis, _jump, _run, _gravity, _forwardSpeed, _backwardSpeed, _strafingSpeed, _jumpSpeed, _runSpeed);
-    }
-    
-    //With gravity and separate speeds(forward, backward, strafing, jumping, running)
-    private void Move(string horizontal, string vertical, string jump, string run, float gravity, float forwardSpeed, float backwardSpeed, float strafingSpeed, float jumpSpeed, float runSpeed)
     {
         Vector3 horizontalDirection = new Vector3();
         Vector3 verticalDirection = new Vector3();
         Vector3 gravityDirection = new Vector3();
 
+        //Movement when the player is not falling
         if (_falling == false)
         {
-            if (Input.GetAxis(vertical) < 0)
+            if (Input.GetAxis(_verticalAxis) < 0)
             {
-                verticalDirection = transform.forward * Input.GetAxis(vertical) * backwardSpeed;
+                verticalDirection = transform.forward * Input.GetAxis(_verticalAxis) * _backwardSpeed;
             }
-            else if(Input.GetButton(run))
+            else if (Input.GetButton(_run))
             {
-                verticalDirection = transform.forward * Input.GetAxis(vertical) * runSpeed;
+                verticalDirection = transform.forward * Input.GetAxis(_verticalAxis) * _runSpeed;
             }
             else
             {
-                verticalDirection = transform.forward * Input.GetAxis(vertical) * forwardSpeed;
+                verticalDirection = transform.forward * Input.GetAxis(_verticalAxis) * _forwardSpeed;
             }
 
-            horizontalDirection = transform.right * Input.GetAxis(horizontal) * strafingSpeed;
-        }
-        
-        if (Physics.SphereCast(_sphereCastTransform.position, _sphereCastRadius, Vector3.down, out _raycastHit,
-                _sphereCastMaxDistance) && Input.GetButtonDown(jump))
-        {
-            gravityDirection = transform.up * jumpSpeed;
+            horizontalDirection = transform.right * Input.GetAxis(_horizontalAxis) * _strafingSpeed;
         }
 
+        //Checking if the player is grounded so the player can jump
+        if (Physics.SphereCast(_sphereCastTransform.position, _sphereCastRadius, Vector3.down, out _raycastHit,
+                _sphereCastMaxDistance) && Input.GetButtonDown(_jump))
+        {
+            gravityDirection = transform.up * _jumpSpeed;
+        }
+
+        //If the player is not grounded gravity is calculated to increase the speed at which the player is falling
         if (Physics.SphereCast(_sphereCastTransform.position, _sphereCastRadius, Vector3.down, out _raycastHit, _sphereCastMaxDistance) == false)
         {
             if (_timeFromFalling == 0)
@@ -70,16 +67,17 @@ public class PlayerMovement : MonoBehaviour
             }
 
             _falling = true;
-            gravityDirection = transform.up * (gravity * -1) * (Time.time - _timeFromFalling);
+            gravityDirection = transform.up * (_gravity * -1) * (Time.time - _timeFromFalling);
         }
         else
         {
             _falling = false;
             _timeFromFalling = 0;
         }
-        
+
         _direction = verticalDirection + horizontalDirection + gravityDirection;
 
+        //If there is no input the player is forced to stop. If there is input the player never exceeds his maximum allowed speed.
         if (_rigidbody.velocity.magnitude > _direction.magnitude && _falling == false)
         {
             if (_direction.Equals(Vector3.zero))
@@ -88,18 +86,23 @@ public class PlayerMovement : MonoBehaviour
                 _rigidbody.angularVelocity = Vector3.zero;
                 _rigidbody.Sleep();
                 _rigidbody.WakeUp();
-             }
-            else if(_direction.Equals(Vector3.zero) == false)
+            }
+            else if (_direction.Equals(Vector3.zero) == false)
             {
                 _rigidbody.velocity = _direction;
                 _rigidbody.angularVelocity = Vector3.zero;
-                _rigidbody.AddForce(_direction);
+                Move();
             }
         }
         else
         {
-            _rigidbody.AddForce(_direction);
+            Move();
         }
+        
     }
     
+    private void Move()
+    {
+        _rigidbody.AddForce(_direction);
+    } 
 }
