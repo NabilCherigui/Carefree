@@ -18,8 +18,7 @@ public class PlayerMovement : MonoBehaviour
 
     private Vector3 _direction;
     private float _timeFromFalling;
-    private bool _falling;
-
+    private bool _grounded;
 
     void Awake()
     {
@@ -28,81 +27,92 @@ public class PlayerMovement : MonoBehaviour
 
     void Update()
     {
-        Vector3 horizontalDirection = new Vector3();
-        Vector3 verticalDirection = new Vector3();
-        Vector3 gravityDirection = new Vector3();
+        float dirX = new float();
+        float dirY = new float();
+        float dirZ = new float();
+
+        if (Physics.SphereCast(_sphereCastTransform.position, _sphereCastRadius, Vector3.down, out _raycastHit,
+                _sphereCastMaxDistance))
+        {
+            print("Grounded");
+            _grounded = true;
+            _timeFromFalling = 0;
+        }
+        else
+        {
+            print("air");
+            _grounded = false;
+        }
 
         //Movement when the player is not falling
-        if (_falling == false)
+        if (_grounded)
         {
             if (Input.GetAxis(_verticalAxis) < 0)
             {
-                verticalDirection = transform.forward * Input.GetAxis(_verticalAxis) * _backwardSpeed;
+                dirX = Input.GetAxis(_verticalAxis) * _backwardSpeed;
             }
             else if (Input.GetButton(_run))
             {
-                verticalDirection = transform.forward * Input.GetAxis(_verticalAxis) * _runSpeed;
+                dirX = Input.GetAxis(_verticalAxis) * _runSpeed;
             }
             else
             {
-                verticalDirection = transform.forward * Input.GetAxis(_verticalAxis) * _forwardSpeed;
+                dirX = Input.GetAxis(_verticalAxis) * _forwardSpeed;
             }
 
-            horizontalDirection = transform.right * Input.GetAxis(_horizontalAxis) * _strafingSpeed;
+            dirY = Input.GetAxis(_horizontalAxis) * _strafingSpeed;
         }
 
         //Checking if the player is grounded so the player can jump
-        if (Physics.SphereCast(_sphereCastTransform.position, _sphereCastRadius, Vector3.down, out _raycastHit,
-                _sphereCastMaxDistance) && Input.GetButtonDown(_jump))
+        if (_grounded && Input.GetButtonDown(_jump))
         {
-            gravityDirection = transform.up * _jumpSpeed;
+            dirZ = _jumpSpeed;
         }
 
         //If the player is not grounded gravity is calculated to increase the speed at which the player is falling
-        if (Physics.SphereCast(_sphereCastTransform.position, _sphereCastRadius, Vector3.down, out _raycastHit, _sphereCastMaxDistance) == false)
+        if (_grounded == false)
         {
-            if (_timeFromFalling == 0)
+            if(_timeFromFalling == 0)
             {
                 _timeFromFalling = Time.time;
             }
-
-            _falling = true;
-            gravityDirection = transform.up * (_gravity * -1) * (Time.time - _timeFromFalling);
+            _direction = Move(dirX, dirY, dirZ) + Gravity(Time.time - _timeFromFalling, _gravity);
         }
         else
         {
-            _falling = false;
-            _timeFromFalling = 0;
-        }
-
-        _direction = verticalDirection + horizontalDirection + gravityDirection;
-
-        //If there is no input the player is forced to stop. If there is input the player never exceeds his maximum allowed speed.
-        if (_rigidbody.velocity.magnitude > _direction.magnitude && _falling == false)
-        {
-            if (_direction.Equals(Vector3.zero))
-            {
-                _rigidbody.velocity = Vector3.zero;
-                _rigidbody.angularVelocity = Vector3.zero;
-                _rigidbody.Sleep();
-                _rigidbody.WakeUp();
-            }
-            else if (_direction.Equals(Vector3.zero) == false)
-            {
-                _rigidbody.velocity = _direction; 
-                _rigidbody.angularVelocity = Vector3.zero;
-                Move();
-            }
-        }
-        else
-        {
-            Move();
+            _direction = Move(dirX, dirY, dirZ);
         }
         
+        //If there is no input the player is forced to stop. If there is input the player never exceeds his maximum allowed speed.
+        if (_grounded)
+        {
+            if (_rigidbody.velocity.magnitude > _direction.magnitude)
+            {
+                if (_direction.Equals(Vector3.zero))
+                {
+                    _rigidbody.velocity = Vector3.zero;
+                    _rigidbody.angularVelocity = Vector3.zero;
+                    _rigidbody.Sleep();
+                    _rigidbody.WakeUp();
+                }
+                else if (_direction.Equals(Vector3.zero) == false)
+                {
+                    _rigidbody.velocity = _direction;
+                    _rigidbody.angularVelocity = Vector3.zero;
+                }
+            }
+        }
+
+        _rigidbody.AddForce(_direction, ForceMode.Acceleration);
     }
-    
-    private void Move()
+
+    private Vector3 Move(float dirX, float dirY, float dirZ)
     {
-        _rigidbody.AddForce(_direction);
-    } 
+        return transform.forward * dirX + transform.right * dirY + transform.up * dirZ;
+    }
+
+    private Vector3 Gravity(float time, float gravity)
+    {
+        return transform.up * (gravity * -1) * time;
+    }
 }
