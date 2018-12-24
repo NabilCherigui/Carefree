@@ -4,7 +4,11 @@ using UnityEngine;
 
 public class PlayerMovement : MonoBehaviour
 {
-    [SerializeField] private float _speed, _gravity, _forwardSpeed, _backwardSpeed, _strafingSpeed, _jumpSpeed, _runSpeed;
+    [SerializeField] private float _forwardMaxSpeed, _backwardMaxSpeed, _strafingMaxSpeed, _runMaxSpeed, _jumpSpeed;
+    [SerializeField] private float _forwardTimeToMax, _backwardTimeToMax, _strafingTimeToMax, _runTimeToMax;
+    private float _forwardSpeed, _backwardSpeed, _strafingSpeed, _runSpeed;
+
+    [SerializeField] private Vector3 _gravity, _terminalVelocity;
 
     [SerializeField] private string _horizontalAxis = "Horizontal", _verticalAxis = "Vertical", _jump = "Jump", _run = "Run";
     
@@ -19,7 +23,7 @@ public class PlayerMovement : MonoBehaviour
     private Vector3 _direction;
     private float _timeFromFalling;
     private bool _grounded;
-
+    
     void Awake()
     {
         _rigidbody = GetComponent<Rigidbody>();
@@ -27,92 +31,91 @@ public class PlayerMovement : MonoBehaviour
 
     void Update()
     {
-        float dirX = new float();
-        float dirY = new float();
-        float dirZ = new float();
+        Vector3 straight = new Vector3();
+        Vector3 side = new Vector3();
+        Vector3 vertical = new Vector3();
 
-        if (Physics.SphereCast(_sphereCastTransform.position, _sphereCastRadius, Vector3.down, out _raycastHit,
-                _sphereCastMaxDistance))
-        {
-            print("Grounded");
-            _grounded = true;
-            _timeFromFalling = 0;
-        }
-        else
-        {
-            print("air");
-            _grounded = false;
-        }
+        _grounded = Physics.SphereCast(_sphereCastTransform.position, _sphereCastRadius, Vector3.down, out _raycastHit, _sphereCastMaxDistance);
 
-        //Movement when the player is not falling
+        if (_grounded == false)
+        {
+            _timeFromFalling += Time.deltaTime;
+            _forwardSpeed = 1;
+            _backwardSpeed = 1;
+            _strafingSpeed = 1;
+            _runSpeed = 1;
+
+            Gravity(_gravity, _terminalVelocity, _timeFromFalling);
+        }
         if (_grounded)
         {
+            _timeFromFalling = 0;
+
             if (Input.GetAxis(_verticalAxis) < 0)
             {
-                dirX = Input.GetAxis(_verticalAxis) * _backwardSpeed;
+                _backwardSpeed = Accelerate(_backwardSpeed, _backwardTimeToMax, _backwardMaxSpeed);
+                straight = transform.forward * Input.GetAxis(_verticalAxis) * _backwardSpeed;
             }
             else if (Input.GetButton(_run))
             {
-                dirX = Input.GetAxis(_verticalAxis) * _runSpeed;
+                _runSpeed = Accelerate(_runSpeed, _runTimeToMax, _runMaxSpeed);
+                straight = transform.forward * Input.GetAxis(_verticalAxis) * _runSpeed;
+
+            }
+            else if(Input.GetAxis(_verticalAxis) > 0)
+            {
+                _forwardSpeed = Accelerate(_forwardSpeed, _forwardTimeToMax, _forwardMaxSpeed);
+                straight = transform.forward * Input.GetAxis(_verticalAxis) * _forwardSpeed;
             }
             else
             {
-                dirX = Input.GetAxis(_verticalAxis) * _forwardSpeed;
+                _forwardSpeed = 1;
+                _backwardSpeed = 1;
+                _runSpeed = 1;
             }
 
-            dirY = Input.GetAxis(_horizontalAxis) * _strafingSpeed;
-        }
-
-        //Checking if the player is grounded so the player can jump
-        if (_grounded && Input.GetButtonDown(_jump))
-        {
-            dirZ = _jumpSpeed;
-        }
-
-        //If the player is not grounded gravity is calculated to increase the speed at which the player is falling
-        if (_grounded == false)
-        {
-            if(_timeFromFalling == 0)
+            if (Input.GetButton(_horizontalAxis))
             {
-                _timeFromFalling = Time.time;
+                _strafingSpeed = Accelerate(_strafingSpeed, _strafingTimeToMax, _strafingMaxSpeed);
+                side = transform.right * Input.GetAxis(_horizontalAxis) * _strafingSpeed;
             }
-            _direction = Move(dirX, dirY, dirZ) + Gravity(Time.time - _timeFromFalling, _gravity);
+            else
+            {
+                _strafingSpeed = 0;
+            }
+
+            vertical = transform.up *Input.GetAxis(_jump) * _jumpSpeed;
+
+            Move(straight + side + vertical);
+        }
+    }
+
+    private void Move(Vector3 direction)
+    {
+        _rigidbody.velocity = direction;
+    }
+    
+    private void Gravity(Vector3 direction, Vector3 terminalVelocity, float time)
+    {
+        if((direction * time).magnitude < terminalVelocity.magnitude)
+        {
+            _rigidbody.AddForce(direction * time, ForceMode.Acceleration);
         }
         else
         {
-            _direction = Move(dirX, dirY, dirZ);
+            _rigidbody.AddForce(terminalVelocity, ForceMode.Acceleration);
         }
-        
-        //If there is no input the player is forced to stop. If there is input the player never exceeds his maximum allowed speed.
-        if (_grounded)
+    }
+
+    private float Accelerate(float speed, float time, float maxSpeed)
+    {
+        speed += maxSpeed / time * Time.deltaTime;
+
+        if (speed > maxSpeed)
         {
-            if (_rigidbody.velocity.magnitude > _direction.magnitude)
-            {
-                if (_direction.Equals(Vector3.zero))
-                {
-                    _rigidbody.velocity = Vector3.zero;
-                    _rigidbody.angularVelocity = Vector3.zero;
-                    _rigidbody.Sleep();
-                    _rigidbody.WakeUp();
-                }
-                else if (_direction.Equals(Vector3.zero) == false)
-                {
-                    _rigidbody.velocity = _direction;
-                    _rigidbody.angularVelocity = Vector3.zero;
-                }
-            }
+            speed = maxSpeed;
         }
 
-        _rigidbody.AddForce(_direction, ForceMode.Acceleration);
-    }
-
-    private Vector3 Move(float dirX, float dirY, float dirZ)
-    {
-        return transform.forward * dirX + transform.right * dirY + transform.up * dirZ;
-    }
-
-    private Vector3 Gravity(float time, float gravity)
-    {
-        return transform.up * (gravity * -1) * time;
+        return speed;
     }
 }
